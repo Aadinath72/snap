@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnapDrop - Photo Sharing App</title>
+    <style>
+        :root {
+            --primary-color: #FFFC00;
+            --secondary-color: #000000;
+            --accent-color: #FF006E;
+            --text-light: #FFFFFF;
+            --text-dark: #333333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--secondary-color);
+            color: var(--text-light);
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+            touch-action: manipulation;
+        }
+
+        /* App header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+        }
+
+        .header-icon {
+            width: 30px;
+            height: 30px;
+            fill: var(--text-light);
+        }
+
+        /* Camera container */
+        .camera-container {
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .camera-view {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background-color: #111;
+        }
+
+        .camera-placeholder {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            background-color: #111;
+            color: var(--text-light);
+        }
+
+        /* Camera controls */
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .capture-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 4px solid var(--text-light);
+            background: transparent;
+            margin-bottom: 20px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .capture-btn::after {
+            content: '';
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            background-color: var(--text-light);
+            border-radius: 50%;
+            top: 10%;
+            left: 10%;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 5px 10px;
+        }
+
+        .mode-btn.active {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .side-buttons {
+            position: fixed;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 100;
+        }
+
+        .side-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: none;
+            color: var(--text-light);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        /* Filters */
+        .filters-container {
+            position: fixed;
+            bottom: 150px;
+            width: 100%;
+            padding: 10px;
+            overflow-x: auto;
+            display: flex;
+            gap: 10px;
+            z-index: 90;
+        }
+
+        .filter-item {
+            width: 80px;
+            height: 80px;
+            border-radius: 10px;
+            overflow: hidden;
+            flex-shrink: 0;
+            position: relative;
+            border: 2px solid transparent;
+        }
+
+        .filter-item.active {
+            border-color: var(--primary-color);
+        }
+
+        .filter-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .filter-name {
+            position: absolute;
+            bottom: 5px;
+            left: 5px;
+            color: white;
+            font-size: 12px;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        /* Preview screen */
+        .preview-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: black;
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+        }
+
+        .preview-image {
+            width: 100%;
+            height: 85%;
+            object-fit: contain;
+        }
+
+        .preview-controls {
+            height: 15%;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .preview-btn {
+            padding: 10px 25px;
+            border-radius: 20px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .send-btn {
+            background-color: var(--primary-color);
+            color: var(--secondary-color);
+        }
+
+        .cancel-btn {
+            background-color: transparent;
+            color: var(--text-light);
+            border: 1px solid var(--text-light);
+        }
+
+        /* Flash animation */
+        .flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            z-index: 150;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Friends list */
+        .friends-container {
+            position: fixed;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            border-radius: 20px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 90;
+        }
+
+        .friend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .friend-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .friend-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        /* Chat interface */
+        .chat-container {
+            display: none;
+            flex-direction: column;
+            height: 100vh;
+            position: relative;
+        }
+
+        .chat-header {
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .messages-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            position: relative;
+        }
+
+        .message-incoming {
+            align-self: flex-start;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-bottom-left-radius: 0;
+        }
+
+        .message-outgoing {
+            align-self: flex-end;
+            background-color: var(--primary-color);
+            color: var(--secondary-color);
+            border-bottom-right-radius: 0;
+        }
+
+        .chat-input-container {
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chat-input {
+            flex-grow: 1;
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: none;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--text-light);
+        }
+
+        .send-message-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: var(--secondary-color);
+            border: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="camera-container">
+        <div class="camera-placeholder">
+            <h2>Camera View</h2>
+        </div>
+        
+        <div class="header">
+            <button class="side-btn">
+                <svg class="header-icon" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"></path>
+                </svg>
+            </button>
+            <button class="side-btn" id="chat-btn">
+                <svg class="header-icon" viewBox="0 0 24 24">
+                    <path d="M4 4h16v12H5.17L4 17.17V4m0-2c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2H4zm2 10h8v2H6v-2zm0-3h12v2H6V9zm0-3h12v2H6V6z"></path>
+                </svg>
+            </button>
+            <button class="side-btn">
+                <svg class="header-icon" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.42 1.15 2.42 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z"></path>
+                </svg>
+            </button>
+        </div>
+
+        <div class="side-buttons">
+            <button class="side-btn" id="flip-camera-btn">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                    <path fill="white" d="M17,10.5V7c0-0.55-0.45-1-1-1H4C3.45,6,3,6.45,3,7v10c0,0.55,0.45,1,1,1h12c0.55,0,1-0.45,1-1v-3.5l4,4v-11L17,10.5z M10,15l-3.89-3.89v2.55H5V9.22h4.44v1.11H6.89l3.11,3.1l4.22-4.22L17,11.5L10,15z"></path>
+                </svg>
+            </button>
+            <button class="side-btn" id="flash-btn">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                    <path fill="white" d="M7 2v11h10v11l7-12H17V2z"></path>
+                </svg>
+            </button>
+            <button class="side-btn" id="timer-btn">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                    <path fill="white" d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42C16.07 4.74 14.12 4 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"></path>
+                </svg>
+            </button>
+        </div>
+
+        <div class="filters-container">
+            <div class="filter-item">
+                <img src="https://placehold.co/80x80" class="filter-preview" alt="Original filter with no modifications">
+                <span class="filter-name">Original</span>
+            </div>
+            <div class="filter-item">
+                <img src="https://placehold.co/80x80/FF006E/FFFFFF" class="filter-preview" alt="Pink tint filter">
+                <span class="filter-name">Pink</span>
+            </div>
+            <div class="filter-item">
+                <img src="https://placehold.co/80x80/00FFFF/FFFFFF" class="filter-preview" alt="Cyan tint filter">
+                <span class="filter-name">Cyan</span>
+            </div>
+            <div class="filter-item active">
+                <img src="https://placehold.co/80x80/FFFC00/000000" class="filter-preview" alt="Yellow tint filter with high contrast">
+                <span class="filter-name">Yellow</span>
+            </div>
+            <div class="filter-item">
+                <img src="https://placehold.co/80x80/7700FF/FFFFFF" class="filter-preview" alt="Purple tint filter">
+                <span class="filter-name">Purple</span>
+            </div>
+            <div class="filter-item">
+                <img src="https://placehold.co/80x80/22FF00/000000" class="filter-preview" alt="Green tint filter">
+                <span class="filter-name">Green</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="photo">PHOTO</button>
+                <button class="mode-btn" data-mode="video">VIDEO</button>
+                <button class="mode-btn" data-mode="story">STORY</button>
+            </div>
+            <button class="capture-btn" id="capture-btn"></button>
+        </div>
+    </div>
+
+    <div class="flash"></div>
+
+    <div class="preview-screen" id="preview-screen">
+        <img class="preview-image" id="preview-image" src="" alt="Captured snap">
+        <div class="preview-controls">
+            <button class="preview-btn cancel-btn" id="cancel-preview">Cancel</button>
+            <button class="preview-btn send-btn" id="send-btn">Send</button>
+        </div>
+    </div>
+
+    <div class="friends-container" id="friends-list">
+        <div class="friend-item">
+            <img src="https://placehold.co/40x40" class="friend-avatar" alt="Alex Johnson's avatar">
+            <span>Alex Johnson</span>
+        </div>
+        <div class="friend-item">
+            <img src="https://placehold.co/40x40/FF006E/FFFFFF" class="friend-avatar" alt="Morgan Smith's avatar">
+            <span>Morgan Smith</span>
+        </div>
+        <div class="friend-item">
+            <img src="https://placehold.co/40x40/00FFFF/FFFFFF" class="friend-avatar" alt="Taylor Swift's avatar">
+            <span>Taylor Swift</span>
+        </div>
+        <div class="friend-item">
+            <img src="https://placehold.co/40x40/7700FF/FFFFFF" class="friend-avatar" alt="Jamie Lee's avatar">
+            <span>Jamie Lee</span>
+        </div>
+        <div class="friend-item">
+            <img src="https://placehold.co/40x40/22FF00/000000" class="friend-avatar" alt="Jordan Baker's avatar">
+            <span>Jordan Baker</span>
+        </div>
+    </div>
+
+    <div class="chat-container" id="chat-container">
+        <div class="chat-header">
+            <button class="side-btn" id="back-to-camera-btn">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                    <path fill="white" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path>
+                </svg>
+            </button>
+            <h3>Chat</h3>
+            <div></div>
+        </div>
+        
+        <div class="messages-container" id="messages-container">
+            <div class="message message-incoming">
+                Hey! What's up?
+            </div>
+            <div class="message message-outgoing">
+                Just snapping some pics, you?
+            </div>
+            <div class="message message-incoming">
+                Check out this new filter!
+            </div>
+        </div>
+        
+        <div class="chat-input-container">
+            <input type="text" class="chat-input" id="chat-input" placeholder="Type a message...">
+            <button class="send-message-btn" id="send-message-btn">
+                <svg viewBox="0 0 24 24" width="20" height="20">
+                    <path fill="#000000" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // App state
+        const state = {
+            flashOn: false,
+            currentFilter: 'yellow',
+            currentMode: 'photo',
+            friendsListVisible: false
+        };
+
+        // DOM elements
+        const captureBtn = document.getElementById('capture-btn');
+        const flashBtn = document.getElementById('flash-btn');
+        const flipCameraBtn = document.getElementById('flip-camera-btn');
+        const timerBtn = document.getElementById('timer-btn');
+        const flashElement = document.querySelector('.flash');
+        const previewScreen = document.getElementById('preview-screen');
+        const previewImage = document.getElementById('preview-image');
+        const cancelPreviewBtn = document.getElementById('cancel-preview');
+        const sendBtn = document.getElementById('send-btn');
+        const friendsList = document.getElementById('friends-list');
+        const chatBtn = document.getElementById('chat-btn');
+        const chatContainer = document.getElementById('chat-container');
+        const backToCameraBtn = document.getElementById('back-to-camera-btn');
+        const modeButtons = document.querySelectorAll('.mode-btn');
+        const filterItems = document.querySelectorAll('.filter-item');
+        const chatInput = document.getElementById('chat-input');
+        const sendMessageBtn = document.getElementById('send-message-btn');
+        const messagesContainer = document.getElementById('messages-container');
+
+        // Event listeners
+        captureBtn.addEventListener('click', takeSnap);
+        flashBtn.addEventListener('click', toggleFlash);
+        flipCameraBtn.addEventListener('click', flipCamera);
+        timerBtn.addEventListener('click', toggleTimer);
+        cancelPreviewBtn.addEventListener('click', closePreview);
+        sendBtn.addEventListener('click', sendSnap);
+        chatBtn.addEventListener('click', openChat);
+        backToCameraBtn.addEventListener('click', closeChat);
+        
+        modeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                modeButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.currentMode = btn.dataset.mode;
+            });
+        });
+
+        filterItems.forEach(item => {
+            item.addEventListener('click', () => {
+                filterItems.forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                // In a real app, apply the selected filter to the camera preview
+            });
+        });
+
+        sendMessageBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Functions
+        function toggleFlash() {
+            state.flashOn = !state.flashOn;
+            flashBtn.style.backgroundColor = state.flashOn ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.5)';
+        }
+
+        function flipCamera() {
+            // In a real app, this would switch between front and rear cameras
+            alert('Switching cameras...');
+        }
+
+        function toggleTimer() {
+            // In a real app, this would show timer options
+            alert('Timer options...');
+        }
+
+        function takeSnap() {
+            if (state.flashOn) {
+                flashElement.style.opacity = '0.9';
+                setTimeout(() => {
+                    flashElement.style.opacity = '0';
+                }, 200);
+            }
+            
+            // Simulate capturing a random placeholder image
+            setTimeout(() => {
+                const colors = ['FF006E', '00FFFF', 'FFFC00', '7700FF', '22FF00'];
+                const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                previewImage.src = `https://placehold.co/600x1000/${randomColor}/FFFFFF?text=Your+Snap`;
+                previewScreen.style.display = 'flex';
+            }, 250);
+        }
+
+        function closePreview() {
+            previewScreen.style.display = 'none';
+        }
+
+        function sendSnap() {
+            friendsList.style.display = 'flex';
+            previewScreen.style.display = 'none';
+            
+            setTimeout(() => {
+                friendsList.style.display = 'none';
+                alert('Snap sent successfully!');
+            }, 3000);
+        }
+
+        function openChat() {
+            chatContainer.style.display = 'flex';
+            document.querySelector('.camera-container').style.display = 'none';
+        }
+
+        function closeChat() {
+            chatContainer.style.display = 'none';
+            document.querySelector('.camera-container').style.display = 'block';
+        }
+
+        function sendMessage() {
+            if (chatInput.value.trim() === '') return;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message message-outgoing';
+            messageDiv.textContent = chatInput.value;
+            messagesContainer.appendChild(messageDiv);
+            
+            // Auto-scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Clear input
+            chatInput.value = '';
+            
+            // Simulate reply after 1 second
+            setTimeout(() => {
+                const replyDiv = document.createElement('div');
+                replyDiv.className = 'message message-incoming';
+                replyDiv.textContent = getRandomReply();
+                messagesContainer.appendChild(replyDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }, 1000);
+        }
+
+        function getRandomReply() {
+            const replies = [
+                'Nice snap!',
+                '😂😂😂',
+                'What filter is that?',
+                'You look great!',
+                'Send me another one!',
+                '👀'
+            ];
+            return replies[Math.floor(Math.random() * replies.length)];
+        }
+    </script>
+</body>
+</html>
+
